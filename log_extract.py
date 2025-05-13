@@ -1,15 +1,24 @@
 import os
 import xml.etree.ElementTree as ET
+import psycopg2
 
-#Enter the parental folder path with contains everyday log files
-#parental_folder_path = 'C:/Users/PC/Desktop/digital_pathology/scan_log/scan-log-examples'
 
 #Enter the folder path containing log file (folder labelled with date)
 parental_folder_path = input("Enter the folder path containing log file (folder labelled with date): ")
-#full_folder_path = os.path.join(parental_folder_path)
 
 #Default filename
 XML_FILE = 'Scaninfo.xml'
+
+#PostgreSQL connection parameters
+conn = psycopg2.connect(
+    dbname="your_database",
+    user="your_username",
+    password="your_password",
+    host="your_host",
+    port="your_port"
+)
+
+curr = conn.cursor()
 
 # Function to get values from settings
 def get_values(setting_element, parameter_name):
@@ -71,5 +80,29 @@ for filename in os.listdir(parental_folder_path):
                 elif group_name == "Calibration":
                     objective_magnification = get_values(settings, "ObjectiveName")
                     print(f"Objective Magnification: {objective_magnification}")
+                    
+            #insert the data into the database
+            insert_query = """
+                INSERT INTO scan_info (sample_id, date_time_scanned, 
+                    scan_start_time, scan_end_time, scan_duration, run_duration, 
+                    scan_width, scan_height, objective_magnification
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+            
+            curr.execute(insert_query, (
+                filename, sample_id, date_time_scanned,
+                scan_start_time, scan_end_time, scan_duration, 
+                run_duration, scan_width, scan_height, objective_magnification
+            ))
+            
+            conn.commit()
+            print(f"Data inserted for {filename}")
+            
+#Cleanup
+curr.close()
+conn.close()
+print("All data processed and inserted into the database successfully.")    
+                
         
         
